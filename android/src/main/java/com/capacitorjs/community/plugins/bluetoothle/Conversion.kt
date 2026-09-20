@@ -1,7 +1,7 @@
 package com.capacitorjs.community.plugins.bluetoothle
 
 // Create a LUT for high performance ByteArray conversion
-val HEX_LOOKUP_TABLE = IntArray(256) {
+public val HEX_LOOKUP_TABLE: IntArray = IntArray(256) {
     val hexChars = "0123456789ABCDEF"
     val h: Int = (hexChars[(it shr 4)].code shl 8)
     val l: Int = hexChars[(it and 0x0F)].code
@@ -10,22 +10,20 @@ val HEX_LOOKUP_TABLE = IntArray(256) {
 
 // Custom implementation of ByteArray.toHexString until stdlib stabilizes
 private fun ByteArray.toHexString(): String {
-    val result = CharArray(this.size * 2);
-    var i = 0;
+    val result = CharArray(this.size * 2)
+    var i = 0
     for (byte in this) {
         val hx = HEX_LOOKUP_TABLE[byte.toInt() and 0xFF]
-        result[i]   = (hx shr 8).toChar()
-        result[i+1] = (hx and 0xFF).toChar()
-        i+=2
+        result[i] = (hx shr 8).toChar()
+        result[i + 1] = (hx and 0xFF).toChar()
+        i += 2
     }
     return result.concatToString()
 }
 
-fun bytesToString(bytes: ByteArray): String {
-    return bytes.toHexString()
-}
+public fun bytesToString(bytes: ByteArray): String = bytes.toHexString()
 
-fun stringToBytes(value: String): ByteArray {
+public fun stringToBytes(value: String): ByteArray {
     if (value == "") {
         return ByteArray(0)
     }
@@ -38,7 +36,7 @@ fun stringToBytes(value: String): ByteArray {
     return bytes
 }
 
-fun hexToByte(hexString: String): Byte {
+public fun hexToByte(hexString: String): Byte {
     val firstDigit = toDigit(hexString[0])
     val secondDigit = toDigit(hexString[1])
     return ((firstDigit shl 4) + secondDigit).toByte()

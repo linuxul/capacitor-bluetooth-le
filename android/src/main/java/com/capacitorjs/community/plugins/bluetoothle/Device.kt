@@ -1,7 +1,6 @@
 package com.capacitorjs.community.plugins.bluetoothle
 
 import android.annotation.SuppressLint
-import android.annotation.TargetApi
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
@@ -15,25 +14,20 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.Looper
-import androidx.annotation.RequiresApi
 import com.getcapacitor.Logger
 import java.util.Collections
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
-class CallbackResponse(
-    val success: Boolean,
-    val value: String,
-)
+public class CallbackResponse(public val success: Boolean, public val value: String)
 
 internal class TimeoutHandler(
     val key: String,
     private val timeoutMap: ConcurrentHashMap<String, TimeoutHandler>,
-    private val onTimeout: () -> Unit,
+    private val onTimeout: () -> Unit
 ) : Runnable {
     override fun run() {
         // Fire only while this handler is still the active timeout for its
@@ -46,28 +40,26 @@ internal class TimeoutHandler(
 }
 
 /** Names the common GATT statuses reported by onConnectionStateChange. */
-internal fun gattStatusName(status: Int): String {
-    return when (status) {
-        BluetoothGatt.GATT_SUCCESS -> "GATT_SUCCESS"
-        8 -> "GATT_CONN_TIMEOUT"
-        19 -> "GATT_CONN_TERMINATE_PEER_USER"
-        22 -> "GATT_CONN_TERMINATE_LOCAL_HOST"
-        34 -> "GATT_CONN_LMP_TIMEOUT"
-        62 -> "GATT_CONN_FAIL_ESTABLISH"
-        133 -> "GATT_ERROR"
-        BluetoothGatt.GATT_FAILURE -> "GATT_FAILURE"
-        else -> "unnamed"
-    }
+internal fun gattStatusName(status: Int): String = when (status) {
+    BluetoothGatt.GATT_SUCCESS -> "GATT_SUCCESS"
+    8 -> "GATT_CONN_TIMEOUT"
+    19 -> "GATT_CONN_TERMINATE_PEER_USER"
+    22 -> "GATT_CONN_TERMINATE_LOCAL_HOST"
+    34 -> "GATT_CONN_LMP_TIMEOUT"
+    62 -> "GATT_CONN_FAIL_ESTABLISH"
+    133 -> "GATT_ERROR"
+    BluetoothGatt.GATT_FAILURE -> "GATT_FAILURE"
+    else -> "unnamed"
 }
 
 @SuppressLint("MissingPermission")
-class Device(
+public class Device(
     private val context: Context,
     bluetoothAdapter: BluetoothAdapter,
     private val address: String,
     private val onDisconnect: () -> Unit
 ) {
-    companion object {
+    public companion object {
         private val TAG = Device::class.java.simpleName
         private const val STATE_DISCONNECTED = 0
         private const val STATE_CONNECTING = 1
@@ -79,6 +71,7 @@ class Device(
     private var connectionState = STATE_DISCONNECTED
     private var device: BluetoothDevice = bluetoothAdapter.getRemoteDevice(address)
     private var bluetoothGatt: BluetoothGatt? = null
+
     // Accessed from the main thread, the callbacks handler thread and binder
     // threads, so both maps must be thread safe.
     private val callbackMap = ConcurrentHashMap<String, ((CallbackResponse) -> Unit)>()
@@ -108,7 +101,7 @@ class Device(
         }
     }
 
-    fun cleanup() {
+    public fun cleanup() {
         synchronized(this) {
             bondStateReceiver?.let { receiver ->
                 try {
@@ -125,9 +118,7 @@ class Device(
     }
 
     private val gattCallback: BluetoothGattCallback = object : BluetoothGattCallback() {
-        override fun onConnectionStateChange(
-            gatt: BluetoothGatt, status: Int, newState: Int
-        ) {
+        override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
             val statusText = "status $status (${gattStatusName(status)})"
             Logger.debug(TAG, "onConnectionStateChange: newState $newState, $statusText")
             if (newState == BluetoothProfile.STATE_CONNECTED) {
@@ -188,37 +179,7 @@ class Device(
             }
         }
 
-        @TargetApi(Build.VERSION_CODES.S_V2)
-        override fun onCharacteristicRead(
-            gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int
-        ) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                // handled by new callback below
-                return
-            }
-            Logger.verbose(TAG, "Using deprecated onCharacteristicRead.")
-            super.onCharacteristicRead(gatt, characteristic, status)
-            val key = "read|${characteristic.service.uuid}|${characteristic.uuid}"
-            if (status == BluetoothGatt.GATT_SUCCESS) {
-                val data = characteristic.value
-                if (data != null) {
-                    val value = bytesToString(data)
-                    resolve(key, value)
-                } else {
-                    reject(key, "No data received while reading characteristic.")
-                }
-            } else {
-                reject(key, "Reading characteristic failed.")
-            }
-        }
-
-        @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
-        override fun onCharacteristicRead(
-            gatt: BluetoothGatt,
-            characteristic: BluetoothGattCharacteristic,
-            data: ByteArray,
-            status: Int
-        ) {
+        override fun onCharacteristicRead(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, data: ByteArray, status: Int) {
             Logger.verbose(TAG, "Using onCharacteristicRead from API level 33.")
             super.onCharacteristicRead(gatt, characteristic, data, status)
             val key = "read|${characteristic.service.uuid}|${characteristic.uuid}"
@@ -230,9 +191,7 @@ class Device(
             }
         }
 
-        override fun onCharacteristicWrite(
-            gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int
-        ) {
+        override fun onCharacteristicWrite(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
             super.onCharacteristicWrite(gatt, characteristic, status)
             val key = "write|${characteristic.service.uuid}|${characteristic.uuid}"
             if (status == BluetoothGatt.GATT_SUCCESS) {
@@ -240,31 +199,9 @@ class Device(
             } else {
                 reject(key, "Writing characteristic failed.")
             }
-
         }
 
-        @TargetApi(Build.VERSION_CODES.S_V2)
-        override fun onCharacteristicChanged(
-            gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic
-        ) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                // handled by new callback below
-                return
-            }
-            Logger.verbose(TAG, "Using deprecated onCharacteristicChanged.")
-            super.onCharacteristicChanged(gatt, characteristic)
-            val notifyKey = "notification|${characteristic.service.uuid}|${characteristic.uuid}"
-            val data = characteristic.value
-            if (data != null) {
-                val value = bytesToString(data)
-                callbackMap[notifyKey]?.invoke(CallbackResponse(true, value))
-            }
-        }
-
-        @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
-        override fun onCharacteristicChanged(
-            gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, data: ByteArray
-        ) {
+        override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, data: ByteArray) {
             Logger.verbose(TAG, "Using onCharacteristicChanged from API level 33.")
             super.onCharacteristicChanged(gatt, characteristic, data)
             val notifyKey = "notification|${characteristic.service.uuid}|${characteristic.uuid}"
@@ -272,35 +209,7 @@ class Device(
             callbackMap[notifyKey]?.invoke(CallbackResponse(true, value))
         }
 
-        @TargetApi(Build.VERSION_CODES.S_V2)
-        override fun onDescriptorRead(
-            gatt: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int
-        ) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                // handled by new callback below
-                return
-            }
-            Logger.verbose(TAG, "Using deprecated onDescriptorRead.")
-            super.onDescriptorRead(gatt, descriptor, status)
-            val key =
-                "readDescriptor|${descriptor.characteristic.service.uuid}|${descriptor.characteristic.uuid}|${descriptor.uuid}"
-            if (status == BluetoothGatt.GATT_SUCCESS) {
-                val data = descriptor.value
-                if (data != null) {
-                    val value = bytesToString(data)
-                    resolve(key, value)
-                } else {
-                    reject(key, "No data received while reading descriptor.")
-                }
-            } else {
-                reject(key, "Reading descriptor failed.")
-            }
-        }
-
-        @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
-        override fun onDescriptorRead(
-            gatt: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int, data: ByteArray
-        ) {
+        override fun onDescriptorRead(gatt: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int, data: ByteArray) {
             Logger.verbose(TAG, "Using onDescriptorRead from API level 33.")
             super.onDescriptorRead(gatt, descriptor, status, data)
             val key =
@@ -313,9 +222,7 @@ class Device(
             }
         }
 
-        override fun onDescriptorWrite(
-            gatt: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int
-        ) {
+        override fun onDescriptorWrite(gatt: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int) {
             super.onDescriptorWrite(gatt, descriptor, status)
             val key =
                 "writeDescriptor|${descriptor.characteristic.service.uuid}|${descriptor.characteristic.uuid}|${descriptor.uuid}"
@@ -327,9 +234,7 @@ class Device(
         }
     }
 
-    fun getId(): String {
-        return address
-    }
+    public fun getId(): String = address
 
     /**
      * Actions that will be executed (see gattCallback)
@@ -337,9 +242,7 @@ class Device(
      * - discover services
      * - request MTU
      */
-    fun connect(
-        timeout: Long, skipDescriptorDiscovery: Boolean, callback: (CallbackResponse) -> Unit
-    ) {
+    public fun connect(timeout: Long, skipDescriptorDiscovery: Boolean, callback: (CallbackResponse) -> Unit) {
         val key = "connect"
         this.skipDescriptorDiscovery = skipDescriptorDiscovery
         callbackMap[key] = callback
@@ -349,35 +252,21 @@ class Device(
         }
         bluetoothGatt?.close()
         connectionState = STATE_CONNECTING
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            initializeCallbacksHandlerThread()
-            bluetoothGatt = device.connectGatt(
-                context,
-                false,
-                gattCallback,
-                BluetoothDevice.TRANSPORT_LE,
-                BluetoothDevice.PHY_OPTION_NO_PREFERRED,
-                callbacksHandler
-            )
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            bluetoothGatt = device.connectGatt(
-                context, false, gattCallback, BluetoothDevice.TRANSPORT_LE
-            )
-        } else {
-            bluetoothGatt = device.connectGatt(
-                context, false, gattCallback
-            )
-        }
+        initializeCallbacksHandlerThread()
+        bluetoothGatt = device.connectGatt(
+            context,
+            false,
+            gattCallback,
+            BluetoothDevice.TRANSPORT_LE,
+            BluetoothDevice.PHY_OPTION_NO_PREFERRED,
+            callbacksHandler
+        )
         setConnectionTimeout(key, "Connection timeout.", bluetoothGatt, timeout)
     }
 
-    private fun connectCallOngoing(): Boolean {
-        return callbackMap.containsKey("connect")
-    }
+    private fun connectCallOngoing(): Boolean = callbackMap.containsKey("connect")
 
-    fun isConnected(): Boolean {
-        return bluetoothGatt != null && connectionState == STATE_CONNECTED
-    }
+    public fun isConnected(): Boolean = bluetoothGatt != null && connectionState == STATE_CONNECTED
 
     private fun requestMtu(mtu: Int) {
         Logger.debug(TAG, "requestMtu $mtu")
@@ -387,15 +276,12 @@ class Device(
         }
     }
 
-    fun getMtu(): Int {
-        return currentMtu
-    }
+    public fun getMtu(): Int = currentMtu
 
-    fun requestConnectionPriority(connectionPriority: Int): Boolean {
-        return bluetoothGatt?.requestConnectionPriority(connectionPriority) ?: false
-    }
+    public fun requestConnectionPriority(connectionPriority: Int): Boolean =
+        bluetoothGatt?.requestConnectionPriority(connectionPriority) ?: false
 
-    fun createBond(timeout: Long, callback: (CallbackResponse) -> Unit) {
+    public fun createBond(timeout: Long, callback: (CallbackResponse) -> Unit) {
         val key = "createBond"
         callbackMap[key] = callback
 
@@ -429,14 +315,10 @@ class Device(
                 override fun onReceive(ctx: Context, intent: Intent) {
                     if (intent.action == BluetoothDevice.ACTION_BOND_STATE_CHANGED) {
                         val updatedDevice =
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                intent.getParcelableExtra(
-                                    BluetoothDevice.EXTRA_DEVICE,
-                                    BluetoothDevice::class.java
-                                )
-                            } else {
-                                intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
-                            }
+                            intent.getParcelableExtra(
+                                BluetoothDevice.EXTRA_DEVICE,
+                                BluetoothDevice::class.java
+                            )
 
                         // BroadcastReceiver receives bond state updates from all devices, need to filter by device
                         if (device.address == updatedDevice?.address) {
@@ -478,13 +360,9 @@ class Device(
         }
     }
 
-    fun isBonded(): Boolean {
-        return device.bondState == BluetoothDevice.BOND_BONDED
-    }
+    public fun isBonded(): Boolean = device.bondState == BluetoothDevice.BOND_BONDED
 
-    fun disconnect(
-        timeout: Long, callback: (CallbackResponse) -> Unit
-    ) {
+    public fun disconnect(timeout: Long, callback: (CallbackResponse) -> Unit) {
         val key = "disconnect"
         callbackMap[key] = callback
         if (bluetoothGatt == null) {
@@ -495,17 +373,11 @@ class Device(
         setTimeout(key, "Disconnection timeout.", timeout)
     }
 
-    fun getServices(): MutableList<BluetoothGattService> {
-        return bluetoothGatt?.services ?: mutableListOf()
-    }
+    public fun getServices(): MutableList<BluetoothGattService> = bluetoothGatt?.services ?: mutableListOf()
 
-    fun getSkipDescriptorDiscovery(): Boolean {
-        return skipDescriptorDiscovery
-    }
+    public fun getSkipDescriptorDiscovery(): Boolean = skipDescriptorDiscovery
 
-    fun discoverServices(
-        timeout: Long, callback: (CallbackResponse) -> Unit
-    ) {
+    public fun discoverServices(timeout: Long, callback: (CallbackResponse) -> Unit) {
         val key = "discoverServices"
         callbackMap[key] = callback
         refreshDeviceCache()
@@ -533,9 +405,7 @@ class Device(
         return result
     }
 
-    fun readRssi(
-        timeout: Long, callback: (CallbackResponse) -> Unit
-    ) {
+    public fun readRssi(timeout: Long, callback: (CallbackResponse) -> Unit) {
         val key = "readRssi"
         callbackMap[key] = callback
         val result = bluetoothGatt?.readRemoteRssi()
@@ -546,12 +416,7 @@ class Device(
         setTimeout(key, "Reading RSSI timeout.", timeout)
     }
 
-    fun read(
-        serviceUUID: UUID,
-        characteristicUUID: UUID,
-        timeout: Long,
-        callback: (CallbackResponse) -> Unit
-    ) {
+    public fun read(serviceUUID: UUID, characteristicUUID: UUID, timeout: Long, callback: (CallbackResponse) -> Unit) {
         val key = "read|$serviceUUID|$characteristicUUID"
         callbackMap[key] = callback
         val service = bluetoothGatt?.getService(serviceUUID)
@@ -568,7 +433,7 @@ class Device(
         setTimeout(key, "Read timeout.", timeout)
     }
 
-    fun write(
+    public fun write(
         serviceUUID: UUID,
         characteristicUUID: UUID,
         value: String,
@@ -586,31 +451,21 @@ class Device(
         }
         val bytes = stringToBytes(value)
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val statusCode = bluetoothGatt?.writeCharacteristic(characteristic, bytes, writeType)
-            if (statusCode != BluetoothStatusCodes.SUCCESS) {
-                reject(key, "Writing characteristic failed with status code $statusCode.")
-                return
-            }
-        } else {
-            characteristic.value = bytes
-            characteristic.writeType = writeType
-            val result = bluetoothGatt?.writeCharacteristic(characteristic)
-            if (result != true) {
-                reject(key, "Writing characteristic failed.")
-                return
-            }
+        val statusCode = bluetoothGatt?.writeCharacteristic(characteristic, bytes, writeType)
+        if (statusCode != BluetoothStatusCodes.SUCCESS) {
+            reject(key, "Writing characteristic failed with status code $statusCode.")
+            return
         }
         setTimeout(key, "Write timeout.", timeout)
     }
 
-    fun setNotifications(
+    public fun setNotifications(
         serviceUUID: UUID,
         characteristicUUID: UUID,
         enable: Boolean,
         notifyCallback: ((CallbackResponse) -> Unit)?,
         timeout: Long,
-        callback: (CallbackResponse) -> Unit,
+        callback: (CallbackResponse) -> Unit
     ) {
         val key = "writeDescriptor|$serviceUUID|$characteristicUUID|$CLIENT_CHARACTERISTIC_CONFIG"
         val notifyKey = "notification|$serviceUUID|$characteristicUUID"
@@ -662,26 +517,16 @@ class Device(
             }
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val statusCode = bluetoothGatt?.writeDescriptor(descriptor, value)
-            if (statusCode != BluetoothStatusCodes.SUCCESS) {
-                reject(key, "Setting notification failed with status code $statusCode.")
-                return
-            }
-        } else {
-            descriptor.value = value
-            val resultDesc = bluetoothGatt?.writeDescriptor(descriptor)
-            if (resultDesc != true) {
-                reject(key, "Setting notification failed.")
-                return
-            }
-
+        val statusCode = bluetoothGatt?.writeDescriptor(descriptor, value)
+        if (statusCode != BluetoothStatusCodes.SUCCESS) {
+            reject(key, "Setting notification failed with status code $statusCode.")
+            return
         }
         setTimeout(key, "Setting notification timeout.", timeout)
         // wait for onDescriptorWrite
     }
 
-    fun readDescriptor(
+    public fun readDescriptor(
         serviceUUID: UUID,
         characteristicUUID: UUID,
         descriptorUUID: UUID,
@@ -709,7 +554,7 @@ class Device(
         setTimeout(key, "Read descriptor timeout.", timeout)
     }
 
-    fun writeDescriptor(
+    public fun writeDescriptor(
         serviceUUID: UUID,
         characteristicUUID: UUID,
         descriptorUUID: UUID,
@@ -732,19 +577,10 @@ class Device(
         }
         val bytes = stringToBytes(value)
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val statusCode = bluetoothGatt?.writeDescriptor(descriptor, bytes)
-            if (statusCode != BluetoothStatusCodes.SUCCESS) {
-                reject(key, "Writing descriptor failed with status code $statusCode.")
-                return
-            }
-        } else {
-            descriptor.value = bytes
-            val result = bluetoothGatt?.writeDescriptor(descriptor)
-            if (result != true) {
-                reject(key, "Writing descriptor failed.")
-                return
-            }
+        val statusCode = bluetoothGatt?.writeDescriptor(descriptor, bytes)
+        if (statusCode != BluetoothStatusCodes.SUCCESS) {
+            reject(key, "Writing descriptor failed with status code $statusCode.")
+            return
         }
         setTimeout(key, "Write timeout.", timeout)
     }
@@ -776,20 +612,13 @@ class Device(
         mainHandler.postDelayed(timeoutHandler, timeout)
     }
 
-    private fun setTimeout(
-        key: String, message: String, timeout: Long
-    ) {
+    private fun setTimeout(key: String, message: String, timeout: Long) {
         startTimeout(key, timeout) {
             reject(key, message)
         }
     }
 
-    private fun setConnectionTimeout(
-        key: String,
-        message: String,
-        gatt: BluetoothGatt?,
-        timeout: Long,
-    ) {
+    private fun setConnectionTimeout(key: String, message: String, gatt: BluetoothGatt?, timeout: Long) {
         startTimeout(key, timeout) {
             connectionState = STATE_DISCONNECTED
             gatt?.disconnect()

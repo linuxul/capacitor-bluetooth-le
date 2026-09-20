@@ -20,7 +20,6 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.net.Uri
-import android.os.Build
 import android.os.ParcelUuid
 import android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS
 import android.provider.Settings.ACTION_BLUETOOTH_SETTINGS
@@ -40,47 +39,52 @@ import com.getcapacitor.annotation.Permission
 import com.getcapacitor.annotation.PermissionCallback
 import java.util.UUID
 
-
 @SuppressLint("MissingPermission")
 @CapacitorPlugin(
     name = "BluetoothLe",
     permissions = [
         Permission(
             strings = [
-                Manifest.permission.ACCESS_COARSE_LOCATION,
-            ], alias = "ACCESS_COARSE_LOCATION"
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ],
+            alias = "ACCESS_COARSE_LOCATION"
         ),
         Permission(
             strings = [
-                Manifest.permission.ACCESS_FINE_LOCATION,
-            ], alias = "ACCESS_FINE_LOCATION"
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ],
+            alias = "ACCESS_FINE_LOCATION"
         ),
         Permission(
             strings = [
-                Manifest.permission.BLUETOOTH,
-            ], alias = "BLUETOOTH"
+                Manifest.permission.BLUETOOTH
+            ],
+            alias = "BLUETOOTH"
         ),
         Permission(
             strings = [
-                Manifest.permission.BLUETOOTH_ADMIN,
-            ], alias = "BLUETOOTH_ADMIN"
+                Manifest.permission.BLUETOOTH_ADMIN
+            ],
+            alias = "BLUETOOTH_ADMIN"
         ),
         Permission(
             strings = [
                 // Manifest.permission.BLUETOOTH_SCAN
-                "android.permission.BLUETOOTH_SCAN",
-            ], alias = "BLUETOOTH_SCAN"
+                "android.permission.BLUETOOTH_SCAN"
+            ],
+            alias = "BLUETOOTH_SCAN"
         ),
         Permission(
             strings = [
                 // Manifest.permission.BLUETOOTH_ADMIN
-                "android.permission.BLUETOOTH_CONNECT",
-            ], alias = "BLUETOOTH_CONNECT"
-        ),
+                "android.permission.BLUETOOTH_CONNECT"
+            ],
+            alias = "BLUETOOTH_CONNECT"
+        )
     ]
 )
-class BluetoothLe : Plugin() {
-    companion object {
+public class BluetoothLe : Plugin() {
+    public companion object {
         private val TAG = BluetoothLe::class.java.simpleName
 
         // maximal scan duration for requestDevice
@@ -101,27 +105,18 @@ class BluetoothLe : Plugin() {
     }
 
     @PluginMethod
-    fun initialize(call: PluginCall) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val neverForLocation = call.getBoolean("androidNeverForLocation", false) as Boolean
-            aliases = if (neverForLocation) {
-                arrayOf(
-                    "BLUETOOTH_SCAN",
-                    "BLUETOOTH_CONNECT",
-                )
-            } else {
-                arrayOf(
-                    "BLUETOOTH_SCAN",
-                    "BLUETOOTH_CONNECT",
-                    "ACCESS_FINE_LOCATION",
-                )
-            }
+    public fun initialize(call: PluginCall) {
+        val neverForLocation = call.getBoolean("androidNeverForLocation", false) as Boolean
+        aliases = if (neverForLocation) {
+            arrayOf(
+                "BLUETOOTH_SCAN",
+                "BLUETOOTH_CONNECT"
+            )
         } else {
-            aliases = arrayOf(
-                "ACCESS_COARSE_LOCATION",
-                "ACCESS_FINE_LOCATION",
-                "BLUETOOTH",
-                "BLUETOOTH_ADMIN",
+            arrayOf(
+                "BLUETOOTH_SCAN",
+                "BLUETOOTH_CONNECT",
+                "ACCESS_FINE_LOCATION"
             )
         }
         requestPermissionForAliases(aliases, call, "checkPermission")
@@ -157,7 +152,7 @@ class BluetoothLe : Plugin() {
     }
 
     @PluginMethod
-    fun isEnabled(call: PluginCall) {
+    public fun isEnabled(call: PluginCall) {
         assertBluetoothAdapter(call) ?: return
         val enabled = bluetoothAdapter?.isEnabled == true
         val result = JSObject()
@@ -166,7 +161,7 @@ class BluetoothLe : Plugin() {
     }
 
     @PluginMethod
-    fun requestEnable(call: PluginCall) {
+    public fun requestEnable(call: PluginCall) {
         assertBluetoothAdapter(call) ?: return
         val intent = Intent(ACTION_REQUEST_ENABLE)
         startActivityForResult(call, intent, "handleRequestEnableResult")
@@ -182,7 +177,7 @@ class BluetoothLe : Plugin() {
     }
 
     @PluginMethod
-    fun enable(call: PluginCall) {
+    public fun enable(call: PluginCall) {
         assertBluetoothAdapter(call) ?: return
         val result = bluetoothAdapter?.enable()
         if (result != true) {
@@ -193,7 +188,7 @@ class BluetoothLe : Plugin() {
     }
 
     @PluginMethod
-    fun disable(call: PluginCall) {
+    public fun disable(call: PluginCall) {
         assertBluetoothAdapter(call) ?: return
         val result = bluetoothAdapter?.disable()
         if (result != true) {
@@ -204,14 +199,16 @@ class BluetoothLe : Plugin() {
     }
 
     @PluginMethod
-    fun startEnabledNotifications(call: PluginCall) {
+    public fun startEnabledNotifications(call: PluginCall) {
         assertBluetoothAdapter(call) ?: return
 
         try {
             createStateReceiver()
         } catch (e: Error) {
             Logger.error(
-                TAG, "Error while registering enabled state receiver: ${e.localizedMessage}", e
+                TAG,
+                "Error while registering enabled state receiver: ${e.localizedMessage}",
+                e
             )
             call.reject("startEnabledNotifications failed.")
             return
@@ -226,7 +223,8 @@ class BluetoothLe : Plugin() {
                     val action = intent.action
                     if (action == BluetoothAdapter.ACTION_STATE_CHANGED) {
                         val state = intent.getIntExtra(
-                            BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR
+                            BluetoothAdapter.EXTRA_STATE,
+                            BluetoothAdapter.ERROR
                         )
                         val enabled = state == BluetoothAdapter.STATE_ON
                         val result = JSObject()
@@ -245,7 +243,7 @@ class BluetoothLe : Plugin() {
     }
 
     @PluginMethod
-    fun stopEnabledNotifications(call: PluginCall) {
+    public fun stopEnabledNotifications(call: PluginCall) {
         if (stateReceiver != null) {
             context.unregisterReceiver(stateReceiver)
         }
@@ -254,7 +252,7 @@ class BluetoothLe : Plugin() {
     }
 
     @PluginMethod
-    fun isLocationEnabled(call: PluginCall) {
+    public fun isLocationEnabled(call: PluginCall) {
         val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         val enabled = LocationManagerCompat.isLocationEnabled(lm)
         Logger.debug(TAG, "location $enabled")
@@ -264,21 +262,21 @@ class BluetoothLe : Plugin() {
     }
 
     @PluginMethod
-    fun openLocationSettings(call: PluginCall) {
+    public fun openLocationSettings(call: PluginCall) {
         val intent = Intent(ACTION_LOCATION_SOURCE_SETTINGS)
         activity.startActivity(intent)
         call.resolve()
     }
 
     @PluginMethod
-    fun openBluetoothSettings(call: PluginCall) {
+    public fun openBluetoothSettings(call: PluginCall) {
         val intent = Intent(ACTION_BLUETOOTH_SETTINGS)
         activity.startActivity(intent)
         call.resolve()
     }
 
     @PluginMethod
-    fun openAppSettings(call: PluginCall) {
+    public fun openAppSettings(call: PluginCall) {
         val intent = Intent(ACTION_APPLICATION_DETAILS_SETTINGS)
         intent.data = Uri.parse("package:" + activity.packageName)
         activity.startActivity(intent)
@@ -286,26 +284,30 @@ class BluetoothLe : Plugin() {
     }
 
     @PluginMethod
-    fun setDisplayStrings(call: PluginCall) {
+    public fun setDisplayStrings(call: PluginCall) {
         displayStrings = DisplayStrings(
             call.getString(
-                "scanning", displayStrings!!.scanning
+                "scanning",
+                displayStrings!!.scanning
             ) as String,
             call.getString(
-                "cancel", displayStrings!!.cancel
+                "cancel",
+                displayStrings!!.cancel
             ) as String,
             call.getString(
-                "availableDevices", displayStrings!!.availableDevices
+                "availableDevices",
+                displayStrings!!.availableDevices
             ) as String,
             call.getString(
-                "noDeviceFound", displayStrings!!.noDeviceFound
-            ) as String,
+                "noDeviceFound",
+                displayStrings!!.noDeviceFound
+            ) as String
         )
         call.resolve()
     }
 
     @PluginMethod
-    fun requestDevice(call: PluginCall) {
+    public fun requestDevice(call: PluginCall) {
         assertBluetoothAdapter(call) ?: return
         val scanFilters = getScanFilters(call) ?: return
         val scanSettings = getScanSettings(call) ?: return
@@ -324,10 +326,14 @@ class BluetoothLe : Plugin() {
             bluetoothAdapter!!,
             scanDuration = MAX_SCAN_DURATION,
             displayStrings = displayStrings!!,
-            showDialog = true,
+            showDialog = true
         )
         deviceScanner?.startScanning(
-            scanFilters, scanSettings, false, namePrefix, { scanResponse ->
+            scanFilters,
+            scanSettings,
+            false,
+            namePrefix,
+            { scanResponse ->
                 run {
                     if (scanResponse.success) {
                         if (scanResponse.device == null) {
@@ -338,15 +344,15 @@ class BluetoothLe : Plugin() {
                         }
                     } else {
                         call.reject(scanResponse.message)
-
                     }
                 }
-            }, null
+            },
+            null
         )
     }
 
     @PluginMethod
-    fun requestLEScan(call: PluginCall) {
+    public fun requestLEScan(call: PluginCall) {
         assertBluetoothAdapter(call) ?: return
         val scanFilters = getScanFilters(call) ?: return
         val scanSettings = getScanSettings(call) ?: return
@@ -366,7 +372,7 @@ class BluetoothLe : Plugin() {
             bluetoothAdapter!!,
             scanDuration = null,
             displayStrings = displayStrings!!,
-            showDialog = false,
+            showDialog = false
         )
         deviceScanner?.startScanning(
             scanFilters,
@@ -391,11 +397,12 @@ class BluetoothLe : Plugin() {
                         Logger.error(TAG, "Error in notifyListeners: ${e.localizedMessage}", e)
                     }
                 }
-            })
+            }
+        )
     }
 
     @PluginMethod
-    fun stopLEScan(call: PluginCall) {
+    public fun stopLEScan(call: PluginCall) {
         assertBluetoothAdapter(call) ?: return
         try {
             deviceScanner?.stopScanning()
@@ -406,7 +413,7 @@ class BluetoothLe : Plugin() {
     }
 
     @PluginMethod
-    fun getDevices(call: PluginCall) {
+    public fun getDevices(call: PluginCall) {
         assertBluetoothAdapter(call) ?: return
         val deviceIds = (call.getArray("deviceIds", JSArray()) as JSArray).toList<String>()
         val bleDevices = JSArray()
@@ -421,7 +428,7 @@ class BluetoothLe : Plugin() {
     }
 
     @PluginMethod
-    fun getConnectedDevices(call: PluginCall) {
+    public fun getConnectedDevices(call: PluginCall) {
         assertBluetoothAdapter(call) ?: return
         val bluetoothManager =
             (activity.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager)
@@ -436,7 +443,7 @@ class BluetoothLe : Plugin() {
     }
 
     @PluginMethod
-    fun getBondedDevices(call: PluginCall) {
+    public fun getBondedDevices(call: PluginCall) {
         assertBluetoothAdapter(call) ?: return
 
         val bluetoothManager = activity.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
@@ -460,7 +467,7 @@ class BluetoothLe : Plugin() {
     }
 
     @PluginMethod
-    fun connect(call: PluginCall) {
+    public fun connect(call: PluginCall) {
         val device = getOrCreateDevice(call) ?: return
         val timeout = call.getFloat("timeout", CONNECTION_TIMEOUT)!!.toLong()
         val skipDescriptorDiscovery = call.getBoolean("skipDescriptorDiscovery", false)!!
@@ -477,14 +484,14 @@ class BluetoothLe : Plugin() {
 
     private fun onDisconnect(deviceId: String) {
         try {
-            notifyListeners("disconnected|${deviceId}", null)
+            notifyListeners("disconnected|$deviceId", null)
         } catch (e: ConcurrentModificationException) {
             Logger.error(TAG, "Error in notifyListeners: ${e.localizedMessage}", e)
         }
     }
 
     @PluginMethod
-    fun createBond(call: PluginCall) {
+    public fun createBond(call: PluginCall) {
         val device = getOrCreateDevice(call) ?: return
         val timeout = call.getFloat("timeout", DEFAULT_TIMEOUT)!!.toLong()
         device.createBond(timeout) { response ->
@@ -499,7 +506,7 @@ class BluetoothLe : Plugin() {
     }
 
     @PluginMethod
-    fun isBonded(call: PluginCall) {
+    public fun isBonded(call: PluginCall) {
         val device = getOrCreateDevice(call) ?: return
         val isBonded = device.isBonded()
         val result = JSObject()
@@ -508,7 +515,7 @@ class BluetoothLe : Plugin() {
     }
 
     @PluginMethod
-    fun disconnect(call: PluginCall) {
+    public fun disconnect(call: PluginCall) {
         val device = getOrCreateDevice(call) ?: return
         val timeout = call.getFloat("timeout", DEFAULT_TIMEOUT)!!.toLong()
         device.disconnect(timeout) { response ->
@@ -525,7 +532,7 @@ class BluetoothLe : Plugin() {
     }
 
     @PluginMethod
-    fun getServices(call: PluginCall) {
+    public fun getServices(call: PluginCall) {
         val device = getDevice(call) ?: return
         val services = device.getServices()
         val skipDescriptorDiscovery = device.getSkipDescriptorDiscovery()
@@ -564,17 +571,20 @@ class BluetoothLe : Plugin() {
             characteristic.properties and BluetoothGattCharacteristic.PROPERTY_BROADCAST > 0
         )
         properties.put(
-            "read", characteristic.properties and BluetoothGattCharacteristic.PROPERTY_READ > 0
+            "read",
+            characteristic.properties and BluetoothGattCharacteristic.PROPERTY_READ > 0
         )
         properties.put(
             "writeWithoutResponse",
             characteristic.properties and BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE > 0
         )
         properties.put(
-            "write", characteristic.properties and BluetoothGattCharacteristic.PROPERTY_WRITE > 0
+            "write",
+            characteristic.properties and BluetoothGattCharacteristic.PROPERTY_WRITE > 0
         )
         properties.put(
-            "notify", characteristic.properties and BluetoothGattCharacteristic.PROPERTY_NOTIFY > 0
+            "notify",
+            characteristic.properties and BluetoothGattCharacteristic.PROPERTY_NOTIFY > 0
         )
         properties.put(
             "indicate",
@@ -592,7 +602,7 @@ class BluetoothLe : Plugin() {
     }
 
     @PluginMethod
-    fun discoverServices(call: PluginCall) {
+    public fun discoverServices(call: PluginCall) {
         val device = getDevice(call) ?: return
         val timeout = call.getFloat("timeout", DEFAULT_TIMEOUT)!!.toLong()
         device.discoverServices(timeout) { response ->
@@ -607,7 +617,7 @@ class BluetoothLe : Plugin() {
     }
 
     @PluginMethod
-    fun getMtu(call: PluginCall) {
+    public fun getMtu(call: PluginCall) {
         val device = getDevice(call) ?: return
         val mtu = device.getMtu()
         val ret = JSObject()
@@ -616,10 +626,12 @@ class BluetoothLe : Plugin() {
     }
 
     @PluginMethod
-    fun requestConnectionPriority(call: PluginCall) {
+    public fun requestConnectionPriority(call: PluginCall) {
         val device = getDevice(call) ?: return
         val connectionPriority = call.getInt("connectionPriority", -1) as Int
-        if (connectionPriority < BluetoothGatt.CONNECTION_PRIORITY_BALANCED || connectionPriority > BluetoothGatt.CONNECTION_PRIORITY_LOW_POWER) {
+        if (connectionPriority < BluetoothGatt.CONNECTION_PRIORITY_BALANCED ||
+            connectionPriority > BluetoothGatt.CONNECTION_PRIORITY_LOW_POWER
+        ) {
             call.reject("Invalid connectionPriority.")
             return
         }
@@ -633,7 +645,7 @@ class BluetoothLe : Plugin() {
     }
 
     @PluginMethod
-    fun readRssi(call: PluginCall) {
+    public fun readRssi(call: PluginCall) {
         val device = getDevice(call) ?: return
         val timeout = call.getFloat("timeout", DEFAULT_TIMEOUT)!!.toLong()
         device.readRssi(timeout) { response ->
@@ -650,7 +662,7 @@ class BluetoothLe : Plugin() {
     }
 
     @PluginMethod
-    fun read(call: PluginCall) {
+    public fun read(call: PluginCall) {
         val device = getDevice(call) ?: return
         val characteristic = getCharacteristic(call) ?: return
         val timeout = call.getFloat("timeout", DEFAULT_TIMEOUT)!!.toLong()
@@ -668,7 +680,7 @@ class BluetoothLe : Plugin() {
     }
 
     @PluginMethod
-    fun write(call: PluginCall) {
+    public fun write(call: PluginCall) {
         val device = getDevice(call) ?: return
         val characteristic = getCharacteristic(call) ?: return
         val value = call.getString("value", null)
@@ -679,7 +691,11 @@ class BluetoothLe : Plugin() {
         val writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
         val timeout = call.getFloat("timeout", DEFAULT_TIMEOUT)!!.toLong()
         device.write(
-            characteristic.first, characteristic.second, value, writeType, timeout
+            characteristic.first,
+            characteristic.second,
+            value,
+            writeType,
+            timeout
         ) { response ->
             run {
                 if (response.success) {
@@ -692,7 +708,7 @@ class BluetoothLe : Plugin() {
     }
 
     @PluginMethod
-    fun writeWithoutResponse(call: PluginCall) {
+    public fun writeWithoutResponse(call: PluginCall) {
         val device = getDevice(call) ?: return
         val characteristic = getCharacteristic(call) ?: return
         val value = call.getString("value", null)
@@ -703,7 +719,11 @@ class BluetoothLe : Plugin() {
         val writeType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
         val timeout = call.getFloat("timeout", DEFAULT_TIMEOUT)!!.toLong()
         device.write(
-            characteristic.first, characteristic.second, value, writeType, timeout
+            characteristic.first,
+            characteristic.second,
+            value,
+            writeType,
+            timeout
         ) { response ->
             run {
                 if (response.success) {
@@ -716,12 +736,15 @@ class BluetoothLe : Plugin() {
     }
 
     @PluginMethod
-    fun readDescriptor(call: PluginCall) {
+    public fun readDescriptor(call: PluginCall) {
         val device = getDevice(call) ?: return
         val descriptor = getDescriptor(call) ?: return
         val timeout = call.getFloat("timeout", DEFAULT_TIMEOUT)!!.toLong()
         device.readDescriptor(
-            descriptor.first, descriptor.second, descriptor.third, timeout
+            descriptor.first,
+            descriptor.second,
+            descriptor.third,
+            timeout
         ) { response ->
             run {
                 if (response.success) {
@@ -736,7 +759,7 @@ class BluetoothLe : Plugin() {
     }
 
     @PluginMethod
-    fun writeDescriptor(call: PluginCall) {
+    public fun writeDescriptor(call: PluginCall) {
         val device = getDevice(call) ?: return
         val descriptor = getDescriptor(call) ?: return
         val value = call.getString("value", null)
@@ -746,7 +769,11 @@ class BluetoothLe : Plugin() {
         }
         val timeout = call.getFloat("timeout", DEFAULT_TIMEOUT)!!.toLong()
         device.writeDescriptor(
-            descriptor.first, descriptor.second, descriptor.third, value, timeout
+            descriptor.first,
+            descriptor.second,
+            descriptor.third,
+            value,
+            timeout
         ) { response ->
             run {
                 if (response.success) {
@@ -759,7 +786,7 @@ class BluetoothLe : Plugin() {
     }
 
     @PluginMethod
-    fun startNotifications(call: PluginCall) {
+    public fun startNotifications(call: PluginCall) {
         val device = getDevice(call) ?: return
         val characteristic = getCharacteristic(call) ?: return
         val timeout = call.getFloat("timeout", DEFAULT_TIMEOUT)!!.toLong()
@@ -787,12 +814,16 @@ class BluetoothLe : Plugin() {
     }
 
     @PluginMethod
-    fun stopNotifications(call: PluginCall) {
+    public fun stopNotifications(call: PluginCall) {
         val device = getDevice(call) ?: return
         val characteristic = getCharacteristic(call) ?: return
         val timeout = call.getFloat("timeout", DEFAULT_TIMEOUT)!!.toLong()
         device.setNotifications(
-            characteristic.first, characteristic.second, false, null, timeout
+            characteristic.first,
+            characteristic.second,
+            false,
+            null,
+            timeout
         ) { response ->
             run {
                 if (response.success) {
@@ -842,12 +873,16 @@ class BluetoothLe : Plugin() {
                     val dataPrefix = if (serviceDataObject.has("dataPrefix")) {
                         val dataPrefixString = serviceDataObject.getString("dataPrefix")
                         stringToBytes(dataPrefixString)
-                    } else null
+                    } else {
+                        null
+                    }
 
                     val mask = if (serviceDataObject.has("mask")) {
                         val maskString = serviceDataObject.getString("mask")
                         stringToBytes(maskString)
-                    } else null
+                    } else {
+                        null
+                    }
 
                     val filterBuilder = ScanFilter.Builder()
 
@@ -878,12 +913,16 @@ class BluetoothLe : Plugin() {
                     val dataPrefix = if (manufacturerDataObject.has("dataPrefix")) {
                         val dataPrefixString = manufacturerDataObject.getString("dataPrefix")
                         stringToBytes(dataPrefixString)
-                    } else null
+                    } else {
+                        null
+                    }
 
                     val mask = if (manufacturerDataObject.has("mask")) {
                         val maskString = manufacturerDataObject.getString("mask")
                         stringToBytes(maskString)
-                    } else null
+                    } else {
+                        null
+                    }
 
                     val filterBuilder = ScanFilter.Builder()
 
@@ -911,7 +950,7 @@ class BluetoothLe : Plugin() {
                 filters.add(filterBuilder.build())
             }
 
-            return filters;
+            return filters
         } catch (e: IllegalArgumentException) {
             call.reject("Invalid UUID or Manufacturer data provided.")
             return null
@@ -933,14 +972,9 @@ class BluetoothLe : Plugin() {
 
         // Bluetooth 5 advertising extensions are only reported when legacy mode is switched off.
         // setLegacy(false) reports both legacy and extended advertisements
-        // The API was added in API level 26, below that extended advertisements cannot be received.
         val allowExtendedAdvertising = call.getBoolean("allowExtendedAdvertising", false) as Boolean
         if (allowExtendedAdvertising) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                scanSettings.setLegacy(false)
-            } else {
-                Logger.warn(TAG, "allowExtendedAdvertising requires Android 8.0 (API level 26) and will be ignored.")
-            }
+            scanSettings.setLegacy(false)
         }
 
         return scanSettings.build()
@@ -974,11 +1008,7 @@ class BluetoothLe : Plugin() {
 
         scanResult.put("rssi", result.rssi)
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            scanResult.put("txPower", result.txPower)
-        } else {
-            scanResult.put("txPower", 127)
-        }
+        scanResult.put("txPower", result.txPower)
 
         val manufacturerData = JSObject()
         val manufacturerSpecificData = result.scanRecord?.manufacturerSpecificData
@@ -1006,22 +1036,12 @@ class BluetoothLe : Plugin() {
         return scanResult
     }
 
-    private fun getDisplayStrings(): DisplayStrings {
-        return DisplayStrings(
-            config.getString(
-                "displayStrings.scanning", "Scanning..."
-            ),
-            config.getString(
-                "displayStrings.cancel", "Cancel"
-            ),
-            config.getString(
-                "displayStrings.availableDevices", "Available devices"
-            ),
-            config.getString(
-                "displayStrings.noDeviceFound", "No device found"
-            ),
-        )
-    }
+    private fun getDisplayStrings(): DisplayStrings = DisplayStrings(
+        config.getString("displayStrings.scanning", "Scanning...") ?: "Scanning...",
+        config.getString("displayStrings.cancel", "Cancel") ?: "Cancel",
+        config.getString("displayStrings.availableDevices", "Available devices") ?: "Available devices",
+        config.getString("displayStrings.noDeviceFound", "No device found") ?: "No device found"
+    )
 
     private fun getDeviceId(call: PluginCall): String? {
         val deviceId = call.getString("deviceId", null)
@@ -1041,7 +1061,9 @@ class BluetoothLe : Plugin() {
         }
         return try {
             val newDevice = Device(
-                activity.applicationContext, bluetoothAdapter!!, deviceId
+                activity.applicationContext,
+                bluetoothAdapter!!,
+                deviceId
             ) {
                 onDisconnect(deviceId)
             }

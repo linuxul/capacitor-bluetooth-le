@@ -8,16 +8,17 @@
   "unpkg": "dist/plugin.js",
   "scripts": {
     "verify": "npm run verify:ios && npm run verify:android && npm run verify:web",
-    "verify:ios": "xcodebuild clean build test -scheme CapacitorCommunityBluetoothLe -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.5'",
+    "verify:ios": "CAPACITOR_IOS_PATH=${CAPACITOR_IOS_PATH:-$(node -p \"require('path').dirname(require.resolve('@capacitor/ios/package.json'))\")} xcodebuild clean build test -scheme CapacitorCommunityBluetoothLe -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.5'",
     "verify:android": "cd android && ./gradlew clean build test && cd ..",
     "verify:web": "npm run test:coverage && npm run build",
-    "lint": "npm run eslint && npm run prettier -- --check && npm run lint:ios",
+    "lint": "npm run eslint && npm run prettier -- --check && npm run lint:ios && npm run ktlint",
     "lint:ios": "npm run swiftlint -- lint ios",
     "lint:android": "cd android && ./gradlew clean lint && cd ..",
-    "fmt": "npm run eslint -- --fix && npm run prettier -- --write && npm run swiftlint -- lint --fix --format ios",
+    "fmt": "npm run eslint -- --fix && npm run prettier -- --write && npm run swiftlint -- lint --fix --format ios && npm run ktlint -- --format",
     "eslint": "eslint . --ext ts",
     "prettier": "prettier \"**/*.{css,html,ts,js}\"",
     "swiftlint": "node-swiftlint",
+    "ktlint": "ktlint \"android/src/**/*.kt\"",
     "docgen": "docgen --api BleClientInterface --output-readme README.md --output-json dist/docs.json",
     "postdocgen": "node scripts/fix-docgen-types.js && prettier README.md --write",
     "build": "npm run clean && npm run docgen && tsc && rollup -c rollup.config.mjs",
@@ -56,8 +57,7 @@
     "standard-version": "^9.5.0",
     "swiftlint": "^2.0.0",
     "ts-jest": "^29.0.3",
-    "typescript": "^5.9.3",
-    "prettier-plugin-java": "^2.7.7"
+    "typescript": "^5.9.3"
   },
   "peerDependencies": {
     "@capacitor/core": ">=8.0.0"

@@ -14,29 +14,24 @@ import android.os.Looper
 import android.widget.ArrayAdapter
 import com.getcapacitor.Logger
 
+public class ScanResponse(public val success: Boolean, public val message: String?, public val device: BluetoothDevice?)
 
-class ScanResponse(
-    val success: Boolean,
-    val message: String?,
-    val device: BluetoothDevice?,
-)
-
-class DisplayStrings(
-    val scanning: String,
-    val cancel: String,
-    val availableDevices: String,
-    val noDeviceFound: String,
+public class DisplayStrings(
+    public val scanning: String,
+    public val cancel: String,
+    public val availableDevices: String,
+    public val noDeviceFound: String
 )
 
 @SuppressLint("MissingPermission")
-class DeviceScanner(
+public class DeviceScanner(
     private val context: Context,
     bluetoothAdapter: BluetoothAdapter,
     private val scanDuration: Long?,
     private val displayStrings: DisplayStrings,
-    private val showDialog: Boolean,
+    private val showDialog: Boolean
 ) {
-    companion object {
+    public companion object {
         private val TAG = DeviceScanner::class.java.simpleName
     }
 
@@ -77,7 +72,7 @@ class DeviceScanner(
         }
     }
 
-    fun startScanning(
+    public fun startScanning(
         scanFilters: List<ScanFilter>,
         scanSettings: ScanSettings,
         allowDuplicates: Boolean,
@@ -103,7 +98,9 @@ class DeviceScanner(
             } else {
                 savedCallback?.invoke(
                     ScanResponse(
-                        true, "Started scanning.", null
+                        true,
+                        "Started scanning.",
+                        null
                     )
                 )
                 savedCallback = null
@@ -112,14 +109,16 @@ class DeviceScanner(
             stopScanning()
             savedCallback?.invoke(
                 ScanResponse(
-                    false, "Already scanning. Stopping now.", null
+                    false,
+                    "Already scanning. Stopping now.",
+                    null
                 )
             )
             savedCallback = null
         }
     }
 
-    fun stopScanning() {
+    public fun stopScanning() {
         stopScanHandler?.removeCallbacksAndMessages(null)
         stopScanHandler = null
         if (showDialog) {
@@ -142,7 +141,9 @@ class DeviceScanner(
             builder.setTitle(displayStrings.scanning)
             builder.setCancelable(true)
             adapter = ArrayAdapter(
-                context, android.R.layout.simple_selectable_list_item, deviceStrings
+                context,
+                android.R.layout.simple_selectable_list_item,
+                deviceStrings
             )
             builder.setAdapter(adapter) { dialog, index ->
                 stopScanning()
@@ -156,7 +157,9 @@ class DeviceScanner(
                 dialog.cancel()
                 savedCallback?.invoke(
                     ScanResponse(
-                        false, "requestDevice cancelled.", null
+                        false,
+                        "requestDevice cancelled.",
+                        null
                     )
                 )
                 savedCallback = null
@@ -166,7 +169,9 @@ class DeviceScanner(
                 dialog.cancel()
                 savedCallback?.invoke(
                     ScanResponse(
-                        false, "requestDevice cancelled.", null
+                        false,
+                        "requestDevice cancelled.",
+                        null
                     )
                 )
                 savedCallback = null
@@ -182,9 +187,9 @@ class DeviceScanner(
             stopScanHandler?.postDelayed(
                 {
                     stopScanning()
-                }, scanDuration
+                },
+                scanDuration
             )
         }
     }
-
 }

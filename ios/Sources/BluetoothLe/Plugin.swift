@@ -1,6 +1,7 @@
 // swiftlint:disable identifier_name
 // swiftlint:disable type_body_length
 import Foundation
+import UIKit
 import Capacitor
 import CoreBluetooth
 
@@ -12,40 +13,40 @@ public class BluetoothLe: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "BluetoothLe"
     public let jsName = "BluetoothLe"
     public let pluginMethods: [CAPPluginMethod] = [
-        CAPPluginMethod(name: "initialize", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "isEnabled", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "requestEnable", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "enable", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "disable", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "startEnabledNotifications", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "stopEnabledNotifications", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "isLocationEnabled", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "openLocationSettings", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "openBluetoothSettings", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "openAppSettings", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "setDisplayStrings", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "requestDevice", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "requestLEScan", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "stopLEScan", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "getDevices", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "discoverServices", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "getConnectedDevices", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "connect", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "createBond", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "isBonded", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "getBondedDevices", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "disconnect", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "getServices", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "getMtu", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "requestConnectionPriority", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "readRssi", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "read", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "write", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "writeWithoutResponse", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "readDescriptor", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "writeDescriptor", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "startNotifications", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "stopNotifications", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "initialize", returnType: .promise),
+        CAPPluginMethod(name: "isEnabled", returnType: .promise),
+        CAPPluginMethod(name: "requestEnable", returnType: .promise),
+        CAPPluginMethod(name: "enable", returnType: .promise),
+        CAPPluginMethod(name: "disable", returnType: .promise),
+        CAPPluginMethod(name: "startEnabledNotifications", returnType: .promise),
+        CAPPluginMethod(name: "stopEnabledNotifications", returnType: .promise),
+        CAPPluginMethod(name: "isLocationEnabled", returnType: .promise),
+        CAPPluginMethod(name: "openLocationSettings", returnType: .promise),
+        CAPPluginMethod(name: "openBluetoothSettings", returnType: .promise),
+        CAPPluginMethod(name: "openAppSettings", returnType: .promise),
+        CAPPluginMethod(name: "setDisplayStrings", returnType: .promise),
+        CAPPluginMethod(name: "requestDevice", returnType: .promise),
+        CAPPluginMethod(name: "requestLEScan", returnType: .promise),
+        CAPPluginMethod(name: "stopLEScan", returnType: .promise),
+        CAPPluginMethod(name: "getDevices", returnType: .promise),
+        CAPPluginMethod(name: "discoverServices", returnType: .promise),
+        CAPPluginMethod(name: "getConnectedDevices", returnType: .promise),
+        CAPPluginMethod(name: "connect", returnType: .promise),
+        CAPPluginMethod(name: "createBond", returnType: .promise),
+        CAPPluginMethod(name: "isBonded", returnType: .promise),
+        CAPPluginMethod(name: "getBondedDevices", returnType: .promise),
+        CAPPluginMethod(name: "disconnect", returnType: .promise),
+        CAPPluginMethod(name: "getServices", returnType: .promise),
+        CAPPluginMethod(name: "getMtu", returnType: .promise),
+        CAPPluginMethod(name: "requestConnectionPriority", returnType: .promise),
+        CAPPluginMethod(name: "readRssi", returnType: .promise),
+        CAPPluginMethod(name: "read", returnType: .promise),
+        CAPPluginMethod(name: "write", returnType: .promise),
+        CAPPluginMethod(name: "writeWithoutResponse", returnType: .promise),
+        CAPPluginMethod(name: "readDescriptor", returnType: .promise),
+        CAPPluginMethod(name: "writeDescriptor", returnType: .promise),
+        CAPPluginMethod(name: "startNotifications", returnType: .promise),
+        CAPPluginMethod(name: "stopNotifications", returnType: .promise)
     ]
     typealias BleDevice = [String: Any]
     typealias BleService = [String: Any]

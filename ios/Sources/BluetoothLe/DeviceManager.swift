@@ -239,9 +239,7 @@ class DeviceManager: NSObject, CBCentralManagerDelegate {
     func showDeviceListView() {
         DispatchQueue.main.async { [weak self] in
             self?.deviceListView = DeviceListView()
-            if #available(macCatalyst 15.0, iOS 15.0, *) {
-                self?.deviceListView?.sheetPresentationController?.detents = [.medium()]
-            }
+            self?.deviceListView?.sheetPresentationController?.detents = [.medium()]
             self?.viewController?.present((self?.deviceListView)!, animated: true, completion: nil)
             self?.deviceListView?.setTitle(self?.displayStrings["scanning"])
             self?.deviceListView?.setCancelButton(self?.displayStrings["cancel"], action: {

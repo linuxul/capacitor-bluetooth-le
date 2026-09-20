@@ -23,6 +23,11 @@ jobs:
         with:
           node-version: 22.x
       - run: npm ci
+      - name: Install ktlint
+        run: |
+          curl -sSLO https://github.com/pinterest/ktlint/releases/download/1.8.0/ktlint
+          chmod a+x ktlint
+          sudo mv ktlint /usr/local/bin/
       - run: npm run lint
 
   verify-web:
