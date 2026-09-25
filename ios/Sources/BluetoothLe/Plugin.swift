@@ -12,41 +12,46 @@ let DEFAULT_TIMEOUT: Double = 5
 public class BluetoothLe: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "BluetoothLe"
     public let jsName = "BluetoothLe"
+    // The methods that change the state of the plugin, the scan or a device stay synchronous: the bridge queue calls
+    // them in the order of the calls and each hands its work to the main queue in that order, which keeps the
+    // operations on a device in call order (a burst of writeWithoutResponse, connect after getDevices, stopLEScan
+    // after requestLEScan) even when the JavaScript queue is disabled. Async methods would not keep that order, so
+    // only the reads and openAppSettings are async.
     public let pluginMethods: [CAPPluginMethod] = [
-        CAPPluginMethod(name: "initialize", returnType: .promise),
-        CAPPluginMethod(name: "isEnabled", returnType: .promise),
-        CAPPluginMethod(name: "requestEnable", returnType: .promise),
-        CAPPluginMethod(name: "enable", returnType: .promise),
-        CAPPluginMethod(name: "disable", returnType: .promise),
-        CAPPluginMethod(name: "startEnabledNotifications", returnType: .promise),
-        CAPPluginMethod(name: "stopEnabledNotifications", returnType: .promise),
-        CAPPluginMethod(name: "isLocationEnabled", returnType: .promise),
-        CAPPluginMethod(name: "openLocationSettings", returnType: .promise),
-        CAPPluginMethod(name: "openBluetoothSettings", returnType: .promise),
-        CAPPluginMethod(name: "openAppSettings", returnType: .promise),
-        CAPPluginMethod(name: "setDisplayStrings", returnType: .promise),
-        CAPPluginMethod(name: "requestDevice", returnType: .promise),
-        CAPPluginMethod(name: "requestLEScan", returnType: .promise),
-        CAPPluginMethod(name: "stopLEScan", returnType: .promise),
-        CAPPluginMethod(name: "getDevices", returnType: .promise),
-        CAPPluginMethod(name: "discoverServices", returnType: .promise),
-        CAPPluginMethod(name: "getConnectedDevices", returnType: .promise),
-        CAPPluginMethod(name: "connect", returnType: .promise),
-        CAPPluginMethod(name: "createBond", returnType: .promise),
-        CAPPluginMethod(name: "isBonded", returnType: .promise),
-        CAPPluginMethod(name: "getBondedDevices", returnType: .promise),
-        CAPPluginMethod(name: "disconnect", returnType: .promise),
-        CAPPluginMethod(name: "getServices", returnType: .promise),
-        CAPPluginMethod(name: "getMtu", returnType: .promise),
-        CAPPluginMethod(name: "requestConnectionPriority", returnType: .promise),
-        CAPPluginMethod(name: "readRssi", returnType: .promise),
-        CAPPluginMethod(name: "read", returnType: .promise),
-        CAPPluginMethod(name: "write", returnType: .promise),
-        CAPPluginMethod(name: "writeWithoutResponse", returnType: .promise),
-        CAPPluginMethod(name: "readDescriptor", returnType: .promise),
-        CAPPluginMethod(name: "writeDescriptor", returnType: .promise),
-        CAPPluginMethod(name: "startNotifications", returnType: .promise),
-        CAPPluginMethod(name: "stopNotifications", returnType: .promise)
+        .promise("initialize", BluetoothLe.initialize(_:)),
+        .async("isEnabled", BluetoothLe.isEnabled),
+        .promise("requestEnable", BluetoothLe.requestEnable),
+        .promise("enable", BluetoothLe.enable),
+        .promise("disable", BluetoothLe.disable),
+        .promise("startEnabledNotifications", BluetoothLe.startEnabledNotifications),
+        .promise("stopEnabledNotifications", BluetoothLe.stopEnabledNotifications),
+        .promise("isLocationEnabled", BluetoothLe.isLocationEnabled),
+        .promise("openLocationSettings", BluetoothLe.openLocationSettings),
+        .promise("openBluetoothSettings", BluetoothLe.openBluetoothSettings),
+        .async("openAppSettings", BluetoothLe.openAppSettings),
+        .promise("setDisplayStrings", BluetoothLe.setDisplayStrings),
+        .promise("requestDevice", BluetoothLe.requestDevice),
+        .promise("requestLEScan", BluetoothLe.requestLEScan),
+        .promise("stopLEScan", BluetoothLe.stopLEScan),
+        .promise("getDevices", BluetoothLe.getDevices),
+        .promise("discoverServices", BluetoothLe.discoverServices),
+        .promise("getConnectedDevices", BluetoothLe.getConnectedDevices),
+        .promise("connect", BluetoothLe.connect),
+        .promise("createBond", BluetoothLe.createBond),
+        .promise("isBonded", BluetoothLe.isBonded),
+        .promise("getBondedDevices", BluetoothLe.getBondedDevices),
+        .promise("disconnect", BluetoothLe.disconnect),
+        .async("getServices", BluetoothLe.getServices),
+        .async("getMtu", BluetoothLe.getMtu),
+        .promise("requestConnectionPriority", BluetoothLe.requestConnectionPriority),
+        .promise("readRssi", BluetoothLe.readRssi),
+        .promise("read", BluetoothLe.read),
+        .promise("write", BluetoothLe.write),
+        .promise("writeWithoutResponse", BluetoothLe.writeWithoutResponse),
+        .promise("readDescriptor", BluetoothLe.readDescriptor),
+        .promise("writeDescriptor", BluetoothLe.writeDescriptor),
+        .promise("startNotifications", BluetoothLe.startNotifications),
+        .promise("stopNotifications", BluetoothLe.stopNotifications)
     ]
     typealias BleDevice = [String: Any]
     typealias BleService = [String: Any]
@@ -60,7 +65,7 @@ public class BluetoothLe: CAPPlugin, CAPBridgedPlugin {
         self.displayStrings = self.getDisplayStrings()
     }
 
-    @objc func initialize(_ call: CAPPluginCall) {
+    func initialize(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
             self.deviceManager = DeviceManager(self.bridge?.viewController, self.displayStrings, {(success, message) in
                 if success {
@@ -72,29 +77,27 @@ public class BluetoothLe: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func isEnabled(_ call: CAPPluginCall) {
-        DispatchQueue.main.async {
-            guard let deviceManager = self.getDeviceManager(call) else { return }
-            let enabled: Bool = deviceManager.isEnabled()
-            call.resolve(["value": enabled])
-        }
+    @MainActor
+    func isEnabled(_ call: CAPPluginCall) async throws -> JSObject {
+        let deviceManager = try self.getDeviceManager()
+        return ["value": deviceManager.isEnabled()]
     }
 
-    @objc func requestEnable(_ call: CAPPluginCall) {
-        call.unavailable("requestEnable is not available on iOS.")
+    func requestEnable(_ call: CAPPluginCall) throws {
+        throw CAPPluginError.unavailable("requestEnable is not available on iOS.")
     }
 
-    @objc func enable(_ call: CAPPluginCall) {
-        call.unavailable("enable is not available on iOS.")
+    func enable(_ call: CAPPluginCall) throws {
+        throw CAPPluginError.unavailable("enable is not available on iOS.")
     }
 
-    @objc func disable(_ call: CAPPluginCall) {
-        call.unavailable("disable is not available on iOS.")
+    func disable(_ call: CAPPluginCall) throws {
+        throw CAPPluginError.unavailable("disable is not available on iOS.")
     }
 
-    @objc func startEnabledNotifications(_ call: CAPPluginCall) {
-        DispatchQueue.main.async {
-            guard let deviceManager = self.getDeviceManager(call) else { return }
+    func startEnabledNotifications(_ call: CAPPluginCall) {
+        onMainQueue(call) {
+            let deviceManager = try self.getDeviceManager()
             deviceManager.registerStateReceiver({(enabled) in
                 self.notifyListeners("onEnabledChanged", data: ["value": enabled])
             })
@@ -102,46 +105,37 @@ public class BluetoothLe: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func stopEnabledNotifications(_ call: CAPPluginCall) {
-        DispatchQueue.main.async {
-            guard let deviceManager = self.getDeviceManager(call) else { return }
+    func stopEnabledNotifications(_ call: CAPPluginCall) {
+        onMainQueue(call) {
+            let deviceManager = try self.getDeviceManager()
             deviceManager.unregisterStateReceiver()
             call.resolve()
         }
     }
 
-    @objc func isLocationEnabled(_ call: CAPPluginCall) {
-        call.unavailable("isLocationEnabled is not available on iOS.")
+    func isLocationEnabled(_ call: CAPPluginCall) throws {
+        throw CAPPluginError.unavailable("isLocationEnabled is not available on iOS.")
     }
 
-    @objc func openLocationSettings(_ call: CAPPluginCall) {
-        call.unavailable("openLocationSettings is not available on iOS.")
+    func openLocationSettings(_ call: CAPPluginCall) throws {
+        throw CAPPluginError.unavailable("openLocationSettings is not available on iOS.")
     }
 
-    @objc func openBluetoothSettings(_ call: CAPPluginCall) {
-        call.unavailable("openBluetoothSettings is not available on iOS.")
+    func openBluetoothSettings(_ call: CAPPluginCall) throws {
+        throw CAPPluginError.unavailable("openBluetoothSettings is not available on iOS.")
     }
 
-    @objc func openAppSettings(_ call: CAPPluginCall) {
-        guard let settingsUrl = URL(string: UIApplication.openSettingsURLString) else {
-            call.reject("Cannot open app settings.")
-            return
+    @MainActor
+    func openAppSettings(_ call: CAPPluginCall) async throws -> JSObject {
+        guard let settingsUrl = URL(string: UIApplication.openSettingsURLString),
+              UIApplication.shared.canOpenURL(settingsUrl) else {
+            throw CAPPluginError("Cannot open app settings.")
         }
-
-        DispatchQueue.main.async {
-            if UIApplication.shared.canOpenURL(settingsUrl) {
-                UIApplication.shared.open(settingsUrl, completionHandler: { (success) in
-                    call.resolve([
-                        "value": success
-                    ])
-                })
-            } else {
-                call.reject("Cannot open app settings.")
-            }
-        }
+        let success = await UIApplication.shared.open(settingsUrl)
+        return ["value": success]
     }
 
-    @objc func setDisplayStrings(_ call: CAPPluginCall) {
+    func setDisplayStrings(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
             for key in ["noDeviceFound", "availableDevices", "scanning", "cancel"] {
                 if let value = call.getString(key) {
@@ -152,9 +146,13 @@ public class BluetoothLe: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func requestDevice(_ call: CAPPluginCall) {
-        DispatchQueue.main.async {
-            guard let deviceManager = self.getDeviceManager(call) else { return }
+    // requestDevice stays synchronous although it presents the device list: its result arrives through the device
+    // manager's "startScanning" callback, which requestLEScan replaces and which is dropped with the manager when
+    // initialize runs again, so it is not called exactly once; and it starts a scan that must stay ordered with
+    // requestLEScan and stopLEScan.
+    func requestDevice(_ call: CAPPluginCall) {
+        onMainQueue(call) {
+            let deviceManager = try self.getDeviceManager()
             deviceManager.setDisplayStrings(self.displayStrings)
 
             let serviceUUIDs = self.getServiceUUIDs(call)
@@ -165,8 +163,7 @@ public class BluetoothLe: CAPPlugin, CAPBridgedPlugin {
 
             let displayModeString = (call.getString("displayMode") ?? "alert").lowercased()
             guard ["alert", "list"].contains(displayModeString) else {
-                call.reject("Invalid displayMode '\(call.getString("displayMode") ?? "")'. Use 'alert' or 'list'.")
-                return
+                throw CAPPluginError("Invalid displayMode '\(call.getString("displayMode") ?? "")'. Use 'alert' or 'list'.")
             }
             let deviceListMode: DeviceListMode = displayModeString == "list" ? .list : .alert
 
@@ -197,9 +194,9 @@ public class BluetoothLe: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func requestLEScan(_ call: CAPPluginCall) {
-        DispatchQueue.main.async {
-            guard let deviceManager = self.getDeviceManager(call) else { return }
+    func requestLEScan(_ call: CAPPluginCall) {
+        onMainQueue(call) {
+            let deviceManager = try self.getDeviceManager()
 
             let serviceUUIDs = self.getServiceUUIDs(call)
             let name = call.getString("name")
@@ -232,20 +229,21 @@ public class BluetoothLe: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func stopLEScan(_ call: CAPPluginCall) {
-        DispatchQueue.main.async {
-            guard let deviceManager = self.getDeviceManager(call) else { return }
+    func stopLEScan(_ call: CAPPluginCall) {
+        onMainQueue(call) {
+            let deviceManager = try self.getDeviceManager()
             deviceManager.stopScan()
             call.resolve()
         }
     }
 
-    @objc func getDevices(_ call: CAPPluginCall) {
-        DispatchQueue.main.async {
-            guard let deviceManager = self.getDeviceManager(call) else { return }
+    // getDevices and getConnectedDevices stay synchronous: they register the devices that connect and the other
+    // device methods look up, so they must run before the calls that follow them.
+    func getDevices(_ call: CAPPluginCall) {
+        onMainQueue(call) {
+            let deviceManager = try self.getDeviceManager()
             guard let deviceIds = call.getArray("deviceIds", String.self) else {
-                call.reject("deviceIds must be provided")
-                return
+                throw CAPPluginError("deviceIds must be provided")
             }
             let deviceUUIDs: [UUID] = deviceIds.compactMap({ deviceId in
                 return UUID(uuidString: deviceId)
@@ -259,12 +257,11 @@ public class BluetoothLe: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func getConnectedDevices(_ call: CAPPluginCall) {
-        DispatchQueue.main.async {
-            guard let deviceManager = self.getDeviceManager(call) else { return }
+    func getConnectedDevices(_ call: CAPPluginCall) {
+        onMainQueue(call) {
+            let deviceManager = try self.getDeviceManager()
             guard let services = call.getArray("services", String.self) else {
-                call.reject("services must be provided")
-                return
+                throw CAPPluginError("services must be provided")
             }
             let serviceUUIDs: [CBUUID] = services.compactMap({ service in
                 return CBUUID(string: service)
@@ -278,10 +275,10 @@ public class BluetoothLe: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func connect(_ call: CAPPluginCall) {
-        DispatchQueue.main.async {
-            guard self.getDeviceManager(call) != nil else { return }
-            guard let device = self.getDevice(call, checkConnection: false) else { return }
+    func connect(_ call: CAPPluginCall) {
+        onMainQueue(call) {
+            let deviceManager = try self.getDeviceManager()
+            let device = try self.getDevice(call, checkConnection: false)
             let timeout = self.getTimeout(call, defaultTimeout: CONNECTION_TIMEOUT)
             let skipDescriptorDiscovery = call.getBool("skipDescriptorDiscovery") ?? false
             let serviceFilter: [CBUUID]? = call.getArray("services", String.self)?
@@ -296,11 +293,11 @@ public class BluetoothLe: CAPPlugin, CAPBridgedPlugin {
                     call.reject(message)
                 }
             })
-            self.deviceManager?.setOnDisconnected(device, {(_, _) in
+            deviceManager.setOnDisconnected(device, {(_, _) in
                 let key = "disconnected|\(device.getId())"
                 self.notifyListeners(key, data: nil)
             })
-            self.deviceManager?.connect(device, timeout, serviceFilter, {(success, message) in
+            deviceManager.connect(device, timeout, serviceFilter, {(success, message) in
                 if success {
                     log("Connected to peripheral. Waiting for service discovery.")
                 } else {
@@ -311,24 +308,24 @@ public class BluetoothLe: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func createBond(_ call: CAPPluginCall) {
-        call.unavailable("createBond is not available on iOS.")
+    func createBond(_ call: CAPPluginCall) throws {
+        throw CAPPluginError.unavailable("createBond is not available on iOS.")
     }
 
-    @objc func isBonded(_ call: CAPPluginCall) {
-        call.unavailable("isBonded is not available on iOS.")
+    func isBonded(_ call: CAPPluginCall) throws {
+        throw CAPPluginError.unavailable("isBonded is not available on iOS.")
     }
 
-    @objc func getBondedDevices(_ call: CAPPluginCall) {
-        call.unavailable("getBondedDevices is not available on iOS.")
+    func getBondedDevices(_ call: CAPPluginCall) throws {
+        throw CAPPluginError.unavailable("getBondedDevices is not available on iOS.")
     }
 
-    @objc func disconnect(_ call: CAPPluginCall) {
-        DispatchQueue.main.async {
-            guard self.getDeviceManager(call) != nil else { return }
-            guard let device = self.getDevice(call, checkConnection: false) else { return }
+    func disconnect(_ call: CAPPluginCall) {
+        onMainQueue(call) {
+            let deviceManager = try self.getDeviceManager()
+            let device = try self.getDevice(call, checkConnection: false)
             let timeout = self.getTimeout(call)
-            self.deviceManager?.disconnect(device, timeout, {(success, message) in
+            deviceManager.disconnect(device, timeout, {(success, message) in
                 if success {
                     call.resolve()
                 } else {
@@ -338,34 +335,35 @@ public class BluetoothLe: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func getServices(_ call: CAPPluginCall) {
-        DispatchQueue.main.async {
-            guard self.getDeviceManager(call) != nil else { return }
-            guard let device = self.getDevice(call) else { return }
-            let services = device.getServices()
-            var bleServices = [BleService]()
-            for service in services {
-                var bleCharacteristics = [BleCharacteristic]()
-                for characteristic in service.characteristics ?? [] {
-                    var bleDescriptors = [BleDescriptor]()
-                    for descriptor in characteristic.descriptors ?? [] {
-                        bleDescriptors.append([
-                            "uuid": cbuuidToString(descriptor.uuid)
-                        ])
-                    }
-                    bleCharacteristics.append([
-                        "uuid": cbuuidToString(characteristic.uuid),
-                        "properties": self.getProperties(characteristic),
-                        "descriptors": bleDescriptors
+    /// A read of the services discovered on a connected device: it runs on the main actor, where CoreBluetooth
+    /// updates them, and needs no order with the other calls.
+    @MainActor
+    func getServices(_ call: CAPPluginCall) async throws {
+        _ = try self.getDeviceManager()
+        let device = try self.getDevice(call)
+        let services = device.getServices()
+        var bleServices = [BleService]()
+        for service in services {
+            var bleCharacteristics = [BleCharacteristic]()
+            for characteristic in service.characteristics ?? [] {
+                var bleDescriptors = [BleDescriptor]()
+                for descriptor in characteristic.descriptors ?? [] {
+                    bleDescriptors.append([
+                        "uuid": cbuuidToString(descriptor.uuid)
                     ])
                 }
-                bleServices.append([
-                    "uuid": cbuuidToString(service.uuid),
-                    "characteristics": bleCharacteristics
+                bleCharacteristics.append([
+                    "uuid": cbuuidToString(characteristic.uuid),
+                    "properties": self.getProperties(characteristic),
+                    "descriptors": bleDescriptors
                 ])
             }
-            call.resolve(["services": bleServices])
+            bleServices.append([
+                "uuid": cbuuidToString(service.uuid),
+                "characteristics": bleCharacteristics
+            ])
         }
+        call.resolve(["services": bleServices])
     }
 
     private func getProperties(_ characteristic: CBCharacteristic) -> [String: Bool] {
@@ -383,10 +381,10 @@ public class BluetoothLe: CAPPlugin, CAPBridgedPlugin {
         ]
     }
 
-    @objc func discoverServices(_ call: CAPPluginCall) {
-        DispatchQueue.main.async {
-            guard self.getDeviceManager(call) != nil else { return }
-            guard let device = self.getDevice(call) else { return }
+    func discoverServices(_ call: CAPPluginCall) {
+        onMainQueue(call) {
+            _ = try self.getDeviceManager()
+            let device = try self.getDevice(call)
             let timeout = self.getTimeout(call)
             device.discoverServices(timeout, {(success, value) in
                 if success {
@@ -398,24 +396,21 @@ public class BluetoothLe: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func getMtu(_ call: CAPPluginCall) {
-        DispatchQueue.main.async {
-            guard self.getDeviceManager(call) != nil else { return }
-            guard let device = self.getDevice(call) else { return }
-            call.resolve([
-                "value": device.getMtu()
-            ])
-        }
+    @MainActor
+    func getMtu(_ call: CAPPluginCall) async throws -> JSObject {
+        _ = try self.getDeviceManager()
+        let device = try self.getDevice(call)
+        return ["value": device.getMtu()]
     }
 
-    @objc func requestConnectionPriority(_ call: CAPPluginCall) {
-        call.unavailable("requestConnectionPriority is not available on iOS.")
+    func requestConnectionPriority(_ call: CAPPluginCall) throws {
+        throw CAPPluginError.unavailable("requestConnectionPriority is not available on iOS.")
     }
 
-    @objc func readRssi(_ call: CAPPluginCall) {
-        DispatchQueue.main.async {
-            guard self.getDeviceManager(call) != nil else { return }
-            guard let device = self.getDevice(call) else { return }
+    func readRssi(_ call: CAPPluginCall) {
+        onMainQueue(call) {
+            _ = try self.getDeviceManager()
+            let device = try self.getDevice(call)
             let timeout = self.getTimeout(call)
             device.readRssi(timeout, {(success, value) in
                 if success {
@@ -429,11 +424,11 @@ public class BluetoothLe: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func read(_ call: CAPPluginCall) {
-        DispatchQueue.main.async {
-            guard self.getDeviceManager(call) != nil else { return }
-            guard let device = self.getDevice(call) else { return }
-            guard let characteristic = self.getCharacteristic(call) else { return }
+    func read(_ call: CAPPluginCall) {
+        onMainQueue(call) {
+            _ = try self.getDeviceManager()
+            let device = try self.getDevice(call)
+            let characteristic = try self.getCharacteristic(call)
             let timeout = self.getTimeout(call)
             device.read(characteristic.0, characteristic.1, timeout, {(success, value) in
                 if success {
@@ -447,14 +442,13 @@ public class BluetoothLe: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func write(_ call: CAPPluginCall) {
-        DispatchQueue.main.async {
-            guard self.getDeviceManager(call) != nil else { return }
-            guard let device = self.getDevice(call) else { return }
-            guard let characteristic = self.getCharacteristic(call) else { return }
+    func write(_ call: CAPPluginCall) {
+        onMainQueue(call) {
+            _ = try self.getDeviceManager()
+            let device = try self.getDevice(call)
+            let characteristic = try self.getCharacteristic(call)
             guard let value = call.getString("value") else {
-                call.reject("value must be provided")
-                return
+                throw CAPPluginError("value must be provided")
             }
             let writeType = CBCharacteristicWriteType.withResponse
             let timeout = self.getTimeout(call)
@@ -473,14 +467,13 @@ public class BluetoothLe: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func writeWithoutResponse(_ call: CAPPluginCall) {
-        DispatchQueue.main.async {
-            guard self.getDeviceManager(call) != nil else { return }
-            guard let device = self.getDevice(call) else { return }
-            guard let characteristic = self.getCharacteristic(call) else { return }
+    func writeWithoutResponse(_ call: CAPPluginCall) {
+        onMainQueue(call) {
+            _ = try self.getDeviceManager()
+            let device = try self.getDevice(call)
+            let characteristic = try self.getCharacteristic(call)
             guard let value = call.getString("value") else {
-                call.reject("value must be provided")
-                return
+                throw CAPPluginError("value must be provided")
             }
             let writeType = CBCharacteristicWriteType.withoutResponse
             let timeout = self.getTimeout(call)
@@ -499,11 +492,11 @@ public class BluetoothLe: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func readDescriptor(_ call: CAPPluginCall) {
-        DispatchQueue.main.async {
-            guard self.getDeviceManager(call) != nil else { return }
-            guard let device = self.getDevice(call) else { return }
-            guard let descriptor = self.getDescriptor(call) else { return }
+    func readDescriptor(_ call: CAPPluginCall) {
+        onMainQueue(call) {
+            _ = try self.getDeviceManager()
+            let device = try self.getDevice(call)
+            let descriptor = try self.getDescriptor(call)
             let timeout = self.getTimeout(call)
             device.readDescriptor(
                 descriptor.0,
@@ -521,14 +514,13 @@ public class BluetoothLe: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func writeDescriptor(_ call: CAPPluginCall) {
-        DispatchQueue.main.async {
-            guard self.getDeviceManager(call) != nil else { return }
-            guard let device = self.getDevice(call) else { return }
-            guard let descriptor = self.getDescriptor(call) else { return }
+    func writeDescriptor(_ call: CAPPluginCall) {
+        onMainQueue(call) {
+            _ = try self.getDeviceManager()
+            let device = try self.getDevice(call)
+            let descriptor = try self.getDescriptor(call)
             guard let value = call.getString("value") else {
-                call.reject("value must be provided")
-                return
+                throw CAPPluginError("value must be provided")
             }
             let timeout = self.getTimeout(call)
             device.writeDescriptor(
@@ -546,11 +538,11 @@ public class BluetoothLe: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func startNotifications(_ call: CAPPluginCall) {
-        DispatchQueue.main.async {
-            guard self.getDeviceManager(call) != nil else { return }
-            guard let device = self.getDevice(call) else { return }
-            guard let characteristic = self.getCharacteristic(call) else { return }
+    func startNotifications(_ call: CAPPluginCall) {
+        onMainQueue(call) {
+            _ = try self.getDeviceManager()
+            let device = try self.getDevice(call)
+            let characteristic = try self.getCharacteristic(call)
             let timeout = self.getTimeout(call)
             device.setNotifications(
                 characteristic.0,
@@ -569,11 +561,11 @@ public class BluetoothLe: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func stopNotifications(_ call: CAPPluginCall) {
-        DispatchQueue.main.async {
-            guard self.getDeviceManager(call) != nil else { return }
-            guard let device = self.getDevice(call) else { return }
-            guard let characteristic = self.getCharacteristic(call) else { return }
+    func stopNotifications(_ call: CAPPluginCall) {
+        onMainQueue(call) {
+            _ = try self.getDeviceManager()
+            let device = try self.getDevice(call)
+            let characteristic = try self.getCharacteristic(call)
             let timeout = self.getTimeout(call)
             device.setNotifications(
                 characteristic.0,
@@ -600,10 +592,22 @@ public class BluetoothLe: CAPPlugin, CAPBridgedPlugin {
         return displayStrings
     }
 
-    private func getDeviceManager(_ call: CAPPluginCall) -> DeviceManager? {
+    /// Runs `body` on the main queue, where CoreBluetooth calls the device manager and the devices back. The bridge
+    /// calls the synchronous methods in the order of the calls and each hands its work to the main queue in that
+    /// order, so the calls keep their order. What `body` throws rejects the call.
+    private func onMainQueue(_ call: CAPPluginCall, _ body: @escaping () throws -> Void) {
+        DispatchQueue.main.async {
+            do {
+                try body()
+            } catch {
+                call.reject(error)
+            }
+        }
+    }
+
+    private func getDeviceManager() throws -> DeviceManager {
         guard let deviceManager = self.deviceManager else {
-            call.reject("Bluetooth LE not initialized.")
-            return nil
+            throw CAPPluginError("Bluetooth LE not initialized.")
         }
         return deviceManager
     }
@@ -688,19 +692,16 @@ public class BluetoothLe: CAPPlugin, CAPBridgedPlugin {
         return serviceDataFilters
     }
 
-    private func getDevice(_ call: CAPPluginCall, checkConnection: Bool = true) -> Device? {
+    private func getDevice(_ call: CAPPluginCall, checkConnection: Bool = true) throws -> Device {
         guard let deviceId = call.getString("deviceId") else {
-            call.reject("deviceId required.")
-            return nil
+            throw CAPPluginError("deviceId required.")
         }
         guard let device = self.deviceMap[deviceId] else {
-            call.reject("Device not found. Call 'requestDevice', 'requestLEScan' or 'getDevices' first.")
-            return nil
+            throw CAPPluginError("Device not found. Call 'requestDevice', 'requestLEScan' or 'getDevices' first.")
         }
         if checkConnection {
             guard device.isConnected() else {
-                call.reject("Not connected to device.")
-                return nil
+                throw CAPPluginError("Not connected to device.")
             }
         }
         return device
@@ -713,28 +714,23 @@ public class BluetoothLe: CAPPlugin, CAPBridgedPlugin {
         return timeout / 1000
     }
 
-    private func getCharacteristic(_ call: CAPPluginCall) -> (CBUUID, CBUUID)? {
+    private func getCharacteristic(_ call: CAPPluginCall) throws -> (CBUUID, CBUUID) {
         guard let service = call.getString("service") else {
-            call.reject("Service UUID required.")
-            return nil
+            throw CAPPluginError("Service UUID required.")
         }
         let serviceUUID = CBUUID(string: service)
 
         guard let characteristic = call.getString("characteristic") else {
-            call.reject("Characteristic UUID required.")
-            return nil
+            throw CAPPluginError("Characteristic UUID required.")
         }
         let characteristicUUID = CBUUID(string: characteristic)
         return (serviceUUID, characteristicUUID)
     }
 
-    private func getDescriptor(_ call: CAPPluginCall) -> (CBUUID, CBUUID, CBUUID)? {
-        guard let characteristic = getCharacteristic(call) else {
-            return nil
-        }
+    private func getDescriptor(_ call: CAPPluginCall) throws -> (CBUUID, CBUUID, CBUUID) {
+        let characteristic = try getCharacteristic(call)
         guard let descriptor = call.getString("descriptor") else {
-            call.reject("Descriptor UUID required.")
-            return nil
+            throw CAPPluginError("Descriptor UUID required.")
         }
         let descriptorUUID = CBUUID(string: descriptor)
 
